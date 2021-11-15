@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <script src="https://d3js.org/d3.v4.js"></script>
+        <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+        <script src="https://d3js.org/topojson.v1.min.js"></script>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script src="https://d3js.org/topojson.v2.min.js"></script>
+        
+      
+            <title> Project - Data Visulization </title>
+        <style>
+            ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background-color: #333;
+            }
+         path {
+            stroke-width: .5px;
+            stroke: black
+              }
+        
+        path:hover {
+            opacity: .6;
+            stroke: black;
+            stroke-width: 4px;
+        }
+            #tooltip {
+            position: absolute;
+            opacity: 0;
+            top: 0;
+            left: 0;
+            width: auto;
+            padding: 10px;
+            background: white;
+            font-family: sans-serif;
+            font-size: medium;
+            border-radius: 2px;
+            line-height: 1;
+           }
+        
+           path {
+            stroke-width: .5px;
+            stroke: black
+        }
+        
+        path:hover {
+            opacity: .6;
+            stroke: black;
+            stroke-width: 4px;
+            fill:aquamarine;
+        }
+            li {
+                float: left;
+            }
+
+            svg{
+		    display:  block;
+		    margin: auto;
+		    background-color: #e5e5e5;
+	           }
+       
+        
+            li a {
+                display: block;
+                color: white;
+                text-align: center;
+                padding: 12px 14px;
+                text-decoration: none;
+            }
+        
+            li a:hover:not(.active) {
+                background-color: rgb(175, 174, 84);
+            }
+        
+            .active {
+                background-color: #1c8181;
+            }
+            .country {
+                fill: #ccc;
+                stroke: #999;
+            }
+        </style>
+        </head>
+        <body style="background-color: rgb(201, 224, 162)">
+        <H1 style="color: #af4c59"> Tokyo Olympics Dashboard </H1>
+        <ul>
+            <li><a href="index.html">Line Chart</a></li>
+            <li><a href="index3.html">Bar Chart</a></li>x`
+            <li><a href="index1.html">Geospatial Visualization</a></li>
+            
+        </ul>
+        <h1>Geospatial Visulization</h1>
+       
+        <div id="container" ></div>
+        <script>
+        const width = 900;
+        const height = 600;
+        
+        const WO_countries = "C:\Data Visulization\HTML\Project Data Visulization\data"
+        const g_index = "./data/Tokyo 2021 dataset v3.csv"
+
+       
+        const svg = d3.select('body').append('svg').attr('width',
+        width).attr('height',height);
+        
+        const projection = d3.geoMercator().scale(140).translate([width/2,height / 1.5]);
+        const path = d3.geoPath(projection);
+
+        const g = svg.append('g');
+
+        d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+          .then(data => {
+
+          const countries = topojson.feature(data, data.objects.countries);
+
+        g.selectAll('path').data(countries.features).enter().append('path').attr('class', 'country').attr('d', path);
+        
+        });
+        
+        Promise.all([
+            d3.json(WO_countries),
+            d3.csv(g_index)
+        ]).then(data => {
+            // topology data
+            const topo_data = data[0];
+            // gini index data
+            const csv_data = data[1];
+            const geojson = topojson.feature(topo_data, topo_data.objects.countries);
+
+            const projections = [
+                d3.geoAzimuthalEqualArea(), //Azimuthal projections project the sphere directly onto a plane.
+                d3.geoAlbersUsa(), // USA conic projection
+                d3.geoAlbers(), // equal-area conic projection
+                d3.geoMercator(), // cylindrical projection
+                d3.geoNaturalEarth1(), // pseudocylindrical projection designed by Tom Patterson
+                d3.geoEqualEarth(), // Equal Earth projection, by Bojan Šavrič et al., 2018.
+                d3.geoConicEqualArea(), //equal-area conic projection
+                d3.geoEquirectangular(), //Cylindrical Projections
+                d3.geoOrthographic()
+            ]
+        
+            const geoPath_generator = d3.geoPath()
+                .projection(projections[3].fitSize([window_dims.width - margin, window_dims.height - margin], geojson))
+
+            /*-------------------------------------------------------*/
+            /*----------------------Color Scaling--------------------*/
+            /*-------------------------------------------------------*/
+            ////https://observablehq.com/@d3/working-with-color
+            var colorInterpolator = d3.interpolateRgbBasis(["blue", "steelblue", "green", "purple", "red"])
+            
+            const tooltip = d3.select("#tooltip");
+
+            let svg = d3.select("body").append("svg")
+                .attr("width", "100vw")
+                .attr("height", "100vh");
+
+            let list1 =geojson.features.map(d=>d['properties']['Rank']);
+            list1 = new Set (list1)
+            console.log(list1) 
+
+            svg.selectAll("path")
+                .data(geojson.features)
+                .enter()
+                .append("path")
+                .attr("d", d => geoPath_generator(d))
+                .attr("fill","none")
+                .attr("class",d => {return `c${d.properties.Rank}`})
+                .attr("fill", d => colorInterpolator(linearScale(d['properties']['Rank'])))
+                .on("mouseenter", (m, d) => {
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .9)
+                        .style("left", m.clientX + "px")
+                        .style("top", m.clientY + "px");
+                    tooltip.html(
+                        "<div class='tooltip' style='color:black'>Country:"+d['properties']['NOC']+"</div>"+
+                        "<div class='tooltip' style='color:blue'>Gold Medal:"+d['properties']['Gold Medal']+"</div>"+
+                        "<div class='tooltip' style='color:blue'>Silver Medal:"+d['properties']['Silver Medal']+"</div>"+
+                        "<div class='tooltip' style='color:blue'>Bronze Medal:"+d['properties']['Bronze Medal']+"</div>"+
+                        "<div class='tooltip' style='color:blue'>Total:"+d['properties']['Total']+"</div>"+
+                        "<div class='tooltip' style='color:blue'>Rank by Total:"+d['properties']['Rank by Total']+"</div>"
+                    )
+                        
+                })
+
+                .on("mousemove", (m, d) => {
+                    tooltip.style("opacity", .9)
+                })
+                .on("mouseout", (m, d) => {
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", 0)
+                })
+
+        })
+        </script>
+        <script type="text/javascript">
+            // <![CDATA[  <-- For SVG support
+            if ('WebSocket' in window) {
+                (function () {
+                    function refreshCSS() {
+                        var sheets = [].slice.call(document.getElementsByTagName("link"));
+                        var head = document.getElementsByTagName("head")[0];
+                        for (var i = 0; i < sheets.length; ++i) {
+                            var elem = sheets[i];
+                            var parent = elem.parentElement || head;
+                            parent.removeChild(elem);
+                            var rel = elem.rel;
+                            if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+                                var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+                                elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+                            }
+                            parent.appendChild(elem);
+                        }
+                    }
+                    var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+                    var address = protocol + window.location.host + window.location.pathname + '/ws';
+                    var socket = new WebSocket(address);
+                    socket.onmessage = function (msg) {
+                        if (msg.data == 'reload') window.location.reload();
+                        else if (msg.data == 'refreshcss') refreshCSS();
+                    };
+                    if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+                        console.log('Live reload enabled.');
+                        sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+                    }
+                })();
+            }
+            else {
+                console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+            }
+            </script>
+            <script type="text/javascript">
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+
+            
+        </script></body>
+
+</html>

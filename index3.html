@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <script src="https://d3js.org/d3.v4.js"></script>
+        <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+        <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+            <title> Project - Data Visulization </title>
+        <style>
+            ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background-color: #333;
+            }
+        
+            li {
+                float: left;
+            }
+        
+            li a {
+                display: block;
+                color: white;
+                text-align: center;
+                padding: 12px 14px;
+                text-decoration: none;
+            }
+        
+            li a:hover:not(.active) {
+                background-color: rgb(175, 174, 84);
+            }
+        
+            .active {
+                background-color: #1c8181;
+            }
+
+            
+        </style>
+        </head>
+        <body style="background-color: rgb(201, 224, 162)">
+        <H1 style="color: #af4c59"> Tokyo Olympics Dashboard </H1>
+        <ul>
+            <li><a href="index.html">Line Chart</a></li>
+            <li><a href="index3.html">Bar Chart</a></li>
+            <li><a href="index1.html">Geospatial Visualization</a></li>
+            
+        </ul>
+        <h1>Bar Chart Visulization</h1>
+        <div id="container" ></div>
+        <script type="text/javascript">
+         var fileName = "https://raw.githubusercontent.com/shivpatil254/project-data-visulization/main/all_data.csv";
+         var nFields = ["1","2","3","4","5","6","7","8","9"];
+         d3.csv(fileName, function(error, data) {
+        var TeamMap = {};
+        data.forEach(function(d) {
+            var Team_map = d.Team;
+            TeamMap[Team_map] = [];
+            nFields.forEach(function(field) {
+              TeamMap[Team_map].push( +d[field] );
+            });
+        });
+        Visualize(TeamMap);
+    });
+
+    var Visualize = function(TeamMap) {
+        var margin = { top: 30, right: 60, bottom: 30, left: 60 },
+            width  = 1000 - margin.left - margin.right,
+            height = 650 - margin.top  - margin.bottom;
+        var xScale = d3.scale.ordinal()
+            .domain(nFields)
+            .rangeRoundBands([0, width], 0.1);
+        var yScale = d3.scale.linear()
+            .range([height, 0]);
+
+        var canvas = d3.select("#container")
+            .append("svg")
+            .attr("width",  width  + margin.left + margin.right)
+            .attr("height", height + margin.top  + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        var x_axis = d3.svg.axis()
+            .scale(xScale)
+            .orient("bottom");
+
+        canvas.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(x_axis);
+        
+        var y_axis = d3.svg.axis()
+            .scale(yScale)
+            .orient("left");
+        
+        var Update_y_axis = canvas.append("g")
+            .attr("class", "y axis")
+            .call(y_axis);
+
+        Update_y_axis.append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 6)
+            .attr("dy", ".71em")
+            .style("text-anchor", "end")
+            .text("Total");
+        
+        var update_bar_chart = function(data) {
+            yScale.domain( d3.extent(data) );
+            Update_y_axis.call(y_axis);
+            var bars = canvas.selectAll(".bar").data(data);
+        
+            bars.enter()
+                .append("rect")
+                .attr("class", "bar")
+                .attr("x", function(d,i) { return xScale( nFields[i] ); })
+                .attr("width", xScale.rangeBand())
+                .attr("y", function(d,i) { return yScale(d); })
+                .attr("height", function(d,i) { return height - yScale(d); });
+
+            bars
+                .transition().duration(250)
+                .attr("y", function(d,i) { return yScale(d); })
+                .attr("height", function(d,i) { return height - yScale(d); });
+            bars.exit().remove();
+
+        };
+        var Drop_down = function() {
+            var NewTeam = d3.select(this).property('value'),
+                newData  = TeamMap[NewTeam];
+            update_bar_chart(newData);
+        };
+
+        var teams = Object.keys(TeamMap).sort();
+        var dropdown = d3.select("#container")
+            .insert("select", "svg")
+            .on("change", Drop_down);
+
+        dropdown.selectAll("option")
+            .data(teams)
+            .enter().append("option")
+            .attr("value", function (d) { return d; })
+            .text(function (d) {
+                return d[0].toUpperCase() + d.slice(1,d.length); // capitalize 1st letter
+            });
+
+        var first_data = TeamMap[ teams[0] ];
+        update_bar_chart(first_data);
+    };
+        
+        </script>
+        </body>
+        </html>
